@@ -1,0 +1,60 @@
+.wnrcg-admin-wrap .description {
+	max-width: 48rem;
+}
+
+.wnrcg-admin-cards {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
+	margin: 1.5rem 0 2rem;
+}
+
+.wnrcg-admin-card {
+	flex: 1 1 12rem;
+	max-width: 16rem;
+	padding: 1.25rem 1.5rem;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #fff;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.wnrcg-admin-card h2 {
+	margin: 0.25rem 0;
+	font-size: 2rem;
+	line-height: 1.2;
+}
+
+.wnrcg-admin-card p {
+	margin: 0.35rem 0;
+}
+
+.wnrcg-admin-steps {
+	max-width: 40rem;
+	list-style: decimal;
+	padding-left: 1.25rem;
+}
+
+.wnrcg-admin-table {
+	margin-top: 1rem;
+}
+
+.wnrcg-admin-badge {
+	display: inline-block;
+	padding: 0.15rem 0.5rem;
+	border-radius: 3px;
+	background: #2271b1;
+	color: #fff;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.wnrcg-admin-badge--muted {
+	background: #dcdcde;
+	color: #50575e;
+}
+
+.wnrcg-editor-panel__link {
+	margin-top: 0.5rem;
+	font-size: 12px;
+}

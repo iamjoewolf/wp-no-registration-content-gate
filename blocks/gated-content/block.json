@@ -1,0 +1,27 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "wnrcg/gated-content",
+	"version": "1.0.0",
+	"title": "Gated content",
+	"category": "wnrcg",
+	"icon": "lock",
+	"description": "Restrict this section to visitors who have completed the unlock form (partial page restriction).",
+	"keywords": [ "gate", "restrict", "private", "members", "unlock" ],
+	"textdomain": "wp-no-registration-content-gate",
+	"attributes": {
+		"sectionTitle": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"supports": {
+		"html": false,
+		"multiple": true,
+		"anchor": true
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./editor.css",
+	"style": "file:./style.css",
+	"render": "file:./render.php"
+}

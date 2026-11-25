@@ -1,0 +1,12 @@
+.wnrcg-gated-content--locked {
+	padding: 0.5rem 0;
+}
+
+.wnrcg-gated-section-placeholder {
+	margin: 0.5rem 0;
+	padding: 0.75rem 1rem;
+	border-left: 4px solid #2271b1;
+	background: #f6f7f7;
+	color: #1d2327;
+	font-size: 0.95rem;
+}
