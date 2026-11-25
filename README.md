@@ -50,16 +50,28 @@ Block themes: gated `core/post-content` is replaced via the `render_block` filte
 - `wnrcg_update_display_name` — set true to overwrite `display_name` on unlock for existing users (default: false; name stored in `wnrcg_last_submitted_name`).
 - `wnrcg_unlocked` — action after successful unlock: `($user_id, $post_id)`.
 
-## User meta
+## Form fields (admin)
+
+**Content Gate → Gate form fields** defines the unlock form. Field definitions live in `wp_options` (`wnrcg_form_fields`). Answers are stored in standard WordPress tables:
+
+| Storage | Table / column |
+|--------|----------------|
+| Email | `wp_users.user_email` |
+| Name | `wp_users.display_name` (or `wnrcg_last_submitted_name` meta) |
+| Marketing opt-in | `wp_usermeta.wnrcg_comms_opt_in` (`yes` / `no`) |
+| Custom questions | `wp_usermeta.wnrcg_{field_id}` |
+
+Built-in locked fields: **name**, **email**, **comms_opt_in**. Add custom questions (text, textarea, select) for your site — e.g. job title, “how will you use this content”, etc.
+
+## User meta (system)
 
 | Meta key | Purpose |
 |----------|---------|
-| `wnrcg_job_title` | Job title |
-| `wnrcg_poem_usage` | How poems will be used |
-| `wnrcg_comms_opt_in` | `yes` / `no` |
+| `wnrcg_comms_opt_in` | Marketing opt-in |
 | `wnrcg_unlocked_at` | First unlock (ISO 8601) |
 | `wnrcg_last_unlocked_at` | Most recent unlock |
-| `wnrcg_last_submitted_name` | Name on unlock when display name not overwritten |
+| `wnrcg_last_submitted_name` | Name when display name not overwritten |
+| `wnrcg_*` | Custom field answers (per field ID) |
 
 ## Licence
 

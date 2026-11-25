@@ -19,7 +19,7 @@
 						'core/paragraph',
 						{
 							placeholder: __(
-								'Add poems or media inside this gated section…',
+								'Add gated content inside this section…',
 								'wp-no-registration-content-gate'
 							),
 						},

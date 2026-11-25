@@ -80,6 +80,15 @@ class WNRCG_Admin {
 
 		add_submenu_page(
 			'wnrcg-gate',
+			__( 'Gate form fields', 'wp-no-registration-content-gate' ),
+			__( 'Gate form fields', 'wp-no-registration-content-gate' ),
+			'manage_options',
+			'wnrcg-form-fields',
+			array( 'WNRCG_Admin_Form_Fields', 'render_page' )
+		);
+
+		add_submenu_page(
+			'wnrcg-gate',
 			__( 'Content Gate settings', 'wp-no-registration-content-gate' ),
 			__( 'Settings', 'wp-no-registration-content-gate' ),
 			'manage_options',
@@ -281,14 +290,6 @@ class WNRCG_Admin {
 						<td><input name="<?php echo esc_attr( WNRCG_Settings::OPTION_KEY ); ?>[submit_label]" id="wnrcg_submit_label" type="text" class="regular-text" value="<?php echo esc_attr( (string) $options['submit_label'] ); ?>" /></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="wnrcg_comms_label"><?php esc_html_e( 'Communications opt-in label', 'wp-no-registration-content-gate' ); ?></label></th>
-						<td><input name="<?php echo esc_attr( WNRCG_Settings::OPTION_KEY ); ?>[comms_opt_in_label]" id="wnrcg_comms_label" type="text" class="large-text" value="<?php echo esc_attr( (string) $options['comms_opt_in_label'] ); ?>" /></td>
-					</tr>
-					<tr>
-						<th scope="row"><label for="wnrcg_email_help"><?php esc_html_e( 'Email field help text', 'wp-no-registration-content-gate' ); ?></label></th>
-						<td><textarea name="<?php echo esc_attr( WNRCG_Settings::OPTION_KEY ); ?>[email_help]" id="wnrcg_email_help" class="large-text" rows="3"><?php echo esc_textarea( (string) $options['email_help'] ); ?></textarea></td>
-					</tr>
-					<tr>
 						<th scope="row"><label for="wnrcg_cookie_days"><?php esc_html_e( 'Unlock cookie lifetime (days)', 'wp-no-registration-content-gate' ); ?></label></th>
 						<td>
 							<input name="<?php echo esc_attr( WNRCG_Settings::OPTION_KEY ); ?>[cookie_days]" id="wnrcg_cookie_days" type="number" min="1" max="730" value="<?php echo esc_attr( (string) $options['cookie_days'] ); ?>" />
@@ -310,6 +311,12 @@ class WNRCG_Admin {
 				<h2><?php esc_html_e( 'Caching', 'wp-no-registration-content-gate' ); ?></h2>
 				<p class="description">
 					<?php esc_html_e( 'Protected pages must not serve the same cached HTML to locked and unlocked visitors. Exclude gated URLs in your CDN or cache plugin, or use visitor-specific caching.', 'wp-no-registration-content-gate' ); ?>
+				</p>
+
+				<p class="description">
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=wnrcg-form-fields' ) ); ?>">
+						<?php esc_html_e( 'Edit unlock form questions (fields, labels, opt-in)', 'wp-no-registration-content-gate' ); ?>
+					</a>
 				</p>
 
 				<?php submit_button(); ?>

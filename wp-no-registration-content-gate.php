@@ -29,12 +29,14 @@ define( 'WNRCG_COOKIE_DAYS', 365 );
 require_once WNRCG_PLUGIN_DIR . 'includes/class-wnrcg-cookie.php';
 require_once WNRCG_PLUGIN_DIR . 'includes/class-wnrcg-user-service.php';
 require_once WNRCG_PLUGIN_DIR . 'includes/class-wnrcg-meta.php';
+require_once WNRCG_PLUGIN_DIR . 'includes/class-wnrcg-fields.php';
 require_once WNRCG_PLUGIN_DIR . 'includes/class-wnrcg-form.php';
 require_once WNRCG_PLUGIN_DIR . 'includes/class-wnrcg-unlock-handler.php';
 require_once WNRCG_PLUGIN_DIR . 'includes/class-wnrcg-content-gate.php';
 require_once WNRCG_PLUGIN_DIR . 'includes/class-wnrcg-blocks.php';
 require_once WNRCG_PLUGIN_DIR . 'includes/class-wnrcg-settings.php';
 require_once WNRCG_PLUGIN_DIR . 'includes/class-wnrcg-admin.php';
+require_once WNRCG_PLUGIN_DIR . 'includes/class-wnrcg-admin-form-fields.php';
 require_once WNRCG_PLUGIN_DIR . 'includes/class-wnrcg-admin-users.php';
 
 /**
@@ -53,6 +55,7 @@ add_action( 'init', 'wnrcg_load_textdomain' );
  * Bootstrap plugin components.
  */
 function wnrcg_bootstrap(): void {
+	WNRCG_Fields::maybe_seed();
 	WNRCG_Meta::init();
 	WNRCG_Unlock_Handler::init();
 	WNRCG_Content_Gate::init();
@@ -61,9 +64,18 @@ function wnrcg_bootstrap(): void {
 
 	if ( is_admin() ) {
 		WNRCG_Admin::init();
+		WNRCG_Admin_Form_Fields::init();
 	}
 }
 add_action( 'plugins_loaded', 'wnrcg_bootstrap' );
+
+/**
+ * Seed default form fields on activation.
+ */
+function wnrcg_activate(): void {
+	WNRCG_Fields::maybe_seed();
+}
+register_activation_hook( WNRCG_PLUGIN_FILE, 'wnrcg_activate' );
 
 /**
  * Enqueue gate styles on singular protected pages when the gate may show.

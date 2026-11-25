@@ -17,43 +17,53 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WNRCG_User_Service {
 
 	/**
-	 * Roles that must never be changed by the gate.
-	 *
 	 * @var string[]
 	 */
 	private const PROTECTED_ROLES = array( 'administrator', 'editor' );
 
 	/**
-	 * Process unlock submission and return user ID.
-	 *
-	 * @param string $name         Display name.
-	 * @param string $job_title    Job title meta.
-	 * @param string $poem_usage   Usage meta.
-	 * @param string $email        Email.
-	 * @param bool   $comms_opt_in Opt-in flag.
-	 * @return int|WP_Error User ID or error.
+	 * @param array<string, mixed> $values Parsed field submission keyed by field id.
+	 * @return int|WP_Error
 	 */
-	public static function upsert_from_unlock( string $name, string $job_title, string $poem_usage, string $email, bool $comms_opt_in ) {
-		$user_id = email_exists( $email );
-
-		if ( $user_id ) {
-			return self::update_existing_user( (int) $user_id, $name, $job_title, $poem_usage, $comms_opt_in );
+	public static function upsert_from_unlock( array $values ) {
+		$email = self::value_for_storage( $values, WNRCG_Fields::STORAGE_USER_EMAIL );
+		if ( $email === '' || ! is_email( $email ) ) {
+			return new WP_Error( 'wnrcg_invalid_email', __( 'A valid email address is required.', 'wp-no-registration-content-gate' ) );
 		}
 
-		return self::create_new_user( $name, $job_title, $poem_usage, $email, $comms_opt_in );
+		$name = self::value_for_storage( $values, WNRCG_Fields::STORAGE_DISPLAY_NAME );
+
+		$user_id = email_exists( $email );
+		if ( $user_id ) {
+			return self::update_existing_user( (int) $user_id, $name, $values );
+		}
+
+		return self::create_new_user( $name, $email, $values );
 	}
 
 	/**
-	 * Update historic / existing user.
-	 *
-	 * @param int    $user_id      User ID.
-	 * @param string $name         Submitted name.
-	 * @param string $job_title    Job title.
-	 * @param string $poem_usage   Poem usage.
-	 * @param bool   $comms_opt_in Opt-in.
+	 * @param array<string, mixed> $values Values.
+	 * @param string               $storage Storage key.
+	 */
+	private static function value_for_storage( array $values, string $storage ): string {
+		$field = WNRCG_Fields::get_field_by_storage( $storage );
+		if ( ! $field ) {
+			return '';
+		}
+		$id = (string) $field['id'];
+		if ( $field['type'] === WNRCG_Fields::TYPE_CHECKBOX ) {
+			return ! empty( $values[ $id ] ) ? '1' : '';
+		}
+		return (string) ( $values[ $id ] ?? '' );
+	}
+
+	/**
+	 * @param int                  $user_id User ID.
+	 * @param string               $name    Display name from form.
+	 * @param array<string, mixed> $values  All values.
 	 * @return int|WP_Error
 	 */
-	private static function update_existing_user( int $user_id, string $name, string $job_title, string $poem_usage, bool $comms_opt_in ) {
+	private static function update_existing_user( int $user_id, string $name, array $values ) {
 		$user = get_user_by( 'id', $user_id );
 		if ( ! $user ) {
 			return new WP_Error( 'wnrcg_user_missing', __( 'Account could not be found.', 'wp-no-registration-content-gate' ) );
@@ -66,44 +76,35 @@ class WNRCG_User_Service {
 			$user->set_role( 'subscriber' );
 		}
 
-		/**
-		 * Whether to overwrite display_name / first_name from the unlock form.
-		 *
-		 * @param bool   $update  Default false.
-		 * @param int    $user_id User ID.
-		 * @param string $name    Submitted name.
-		 */
-		$default_update = (bool) WNRCG_Settings::get( 'update_display_name', false );
-		$update_display = (bool) apply_filters( 'wnrcg_update_display_name', $default_update, $user_id, $name );
+		if ( $name !== '' ) {
+			$default_update = (bool) WNRCG_Settings::get( 'update_display_name', false );
+			$update_display = (bool) apply_filters( 'wnrcg_update_display_name', $default_update, $user_id, $name );
 
-		if ( $update_display ) {
-			wp_update_user(
-				array(
-					'ID'           => $user_id,
-					'display_name' => $name,
-					'first_name'   => $name,
-				)
-			);
-		} else {
-			update_user_meta( $user_id, 'wnrcg_last_submitted_name', $name );
+			if ( $update_display ) {
+				wp_update_user(
+					array(
+						'ID'           => $user_id,
+						'display_name' => $name,
+						'first_name'   => $name,
+					)
+				);
+			} else {
+				update_user_meta( $user_id, 'wnrcg_last_submitted_name', $name );
+			}
 		}
 
-		self::save_profile_meta( $user_id, $job_title, $poem_usage, $comms_opt_in, false );
+		self::persist_field_values( $user_id, $values, false );
 
 		return $user_id;
 	}
 
 	/**
-	 * Create subscriber with random password; no notification emails.
-	 *
-	 * @param string $name         Name.
-	 * @param string $job_title    Job title.
-	 * @param string $poem_usage   Usage.
-	 * @param string $email        Email.
-	 * @param bool   $comms_opt_in Opt-in.
+	 * @param string               $name   Name.
+	 * @param string               $email  Email.
+	 * @param array<string, mixed> $values Values.
 	 * @return int|WP_Error
 	 */
-	private static function create_new_user( string $name, string $job_title, string $poem_usage, string $email, bool $comms_opt_in ) {
+	private static function create_new_user( string $name, string $email, array $values ) {
 		wnrcg_suppress_new_user_emails();
 
 		$username = self::unique_username_from_email( $email );
@@ -114,43 +115,59 @@ class WNRCG_User_Service {
 			return $user_id;
 		}
 
+		$display = $name !== '' ? $name : $username;
+
 		wp_update_user(
 			array(
 				'ID'           => $user_id,
-				'display_name' => $name,
-				'first_name'   => $name,
+				'display_name' => $display,
+				'first_name'   => $display,
 				'role'         => 'subscriber',
 			)
 		);
 
-		self::save_profile_meta( (int) $user_id, $job_title, $poem_usage, $comms_opt_in, true );
+		self::persist_field_values( (int) $user_id, $values, true );
 
 		return (int) $user_id;
 	}
 
 	/**
-	 * Persist gate-specific user meta.
+	 * Save meta-backed answers and unlock timestamps.
 	 *
-	 * @param int    $user_id      User ID.
-	 * @param string $job_title    Job title.
-	 * @param string $poem_usage   Usage.
-	 * @param bool   $comms_opt_in Opt-in.
-	 * @param bool   $is_new       First unlock.
+	 * @param int                  $user_id User ID.
+	 * @param array<string, mixed> $values  Submission.
+	 * @param bool                 $is_new  First unlock.
 	 */
-	private static function save_profile_meta( int $user_id, string $job_title, string $poem_usage, bool $comms_opt_in, bool $is_new ): void {
-		update_user_meta( $user_id, 'wnrcg_job_title', $job_title );
-		update_user_meta( $user_id, 'wnrcg_poem_usage', $poem_usage );
-		update_user_meta( $user_id, 'wnrcg_comms_opt_in', $comms_opt_in ? 'yes' : 'no' );
-		update_user_meta( $user_id, 'wnrcg_last_unlocked_at', gmdate( 'c' ) );
+	private static function persist_field_values( int $user_id, array $values, bool $is_new ): void {
+		foreach ( WNRCG_Fields::all() as $field ) {
+			$id      = (string) $field['id'];
+			$storage = (string) $field['storage'];
 
+			if ( in_array( $storage, array( WNRCG_Fields::STORAGE_USER_EMAIL, WNRCG_Fields::STORAGE_DISPLAY_NAME ), true ) ) {
+				continue;
+			}
+
+			if ( $storage === WNRCG_Fields::STORAGE_COMMS_OPT_IN ) {
+				update_user_meta( $user_id, 'wnrcg_comms_opt_in', ! empty( $values[ $id ] ) ? 'yes' : 'no' );
+				continue;
+			}
+
+			if ( $storage === WNRCG_Fields::STORAGE_META ) {
+				$val = $values[ $id ] ?? '';
+				if ( $field['type'] === WNRCG_Fields::TYPE_CHECKBOX ) {
+					$val = ! empty( $values[ $id ] ) ? 'yes' : 'no';
+				}
+				update_user_meta( $user_id, WNRCG_Fields::meta_key( $id ), is_scalar( $val ) ? (string) $val : '' );
+			}
+		}
+
+		update_user_meta( $user_id, 'wnrcg_last_unlocked_at', gmdate( 'c' ) );
 		if ( $is_new ) {
 			update_user_meta( $user_id, 'wnrcg_unlocked_at', gmdate( 'c' ) );
 		}
 	}
 
 	/**
-	 * Generate a unique username from email local part.
-	 *
 	 * @param string $email Email.
 	 */
 	private static function unique_username_from_email( string $email ): string {

@@ -16,9 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class WNRCG_Admin_Users {
 
-	/**
-	 * Register admin hooks.
-	 */
 	public static function init(): void {
 		add_filter( 'manage_users_columns', array( __CLASS__, 'add_columns' ) );
 		add_filter( 'manage_users_custom_column', array( __CLASS__, 'render_column' ), 10, 3 );
@@ -31,44 +28,35 @@ class WNRCG_Admin_Users {
 	 * @return string[]
 	 */
 	public static function add_columns( array $columns ): array {
-		$columns['wnrcg_job_title']     = __( 'Job title', 'wp-no-registration-content-gate' );
-		$columns['wnrcg_poem_usage']    = __( 'Poem usage', 'wp-no-registration-content-gate' );
-		$columns['wnrcg_comms_opt_in']  = __( 'Comms opt-in', 'wp-no-registration-content-gate' );
-
+		foreach ( WNRCG_Fields::list_columns() as $field ) {
+			$id = (string) $field['id'];
+			$key = 'wnrcg_' . $id;
+			$columns[ $key ] = (string) $field['label'];
+		}
 		return $columns;
 	}
 
-	/**
-	 * @param string $output      Cell output.
-	 * @param string $column_name Column key.
-	 * @param int    $user_id     User ID.
-	 */
 	public static function render_column( string $output, string $column_name, int $user_id ): string {
-		switch ( $column_name ) {
-			case 'wnrcg_job_title':
-				return esc_html( (string) get_user_meta( $user_id, 'wnrcg_job_title', true ) );
-			case 'wnrcg_poem_usage':
-				$usage = (string) get_user_meta( $user_id, 'wnrcg_poem_usage', true );
-				return esc_html( wp_html_excerpt( $usage, 80, '…' ) );
-			case 'wnrcg_comms_opt_in':
-				$opt = (string) get_user_meta( $user_id, 'wnrcg_comms_opt_in', true );
-				return $opt === 'yes' ? esc_html__( 'Yes', 'wp-no-registration-content-gate' ) : esc_html__( 'No', 'wp-no-registration-content-gate' );
+		if ( ! str_starts_with( $column_name, 'wnrcg_' ) ) {
+			return $output;
+		}
+
+		$field_id = substr( $column_name, 6 );
+		foreach ( WNRCG_Fields::list_columns() as $field ) {
+			if ( (string) $field['id'] === $field_id ) {
+				$value = WNRCG_Fields::value_for_user( $user_id, $field );
+				if ( (string) $field['type'] === WNRCG_Fields::TYPE_TEXTAREA ) {
+					return esc_html( wp_html_excerpt( $value, 80, '…' ) );
+				}
+				return esc_html( $value );
+			}
 		}
 
 		return $output;
 	}
 
-	/**
-	 * Export button above users table.
-	 *
-	 * @param string $which top|bottom.
-	 */
 	public static function export_button( string $which ): void {
-		if ( $which !== 'top' ) {
-			return;
-		}
-
-		if ( ! current_user_can( 'list_users' ) ) {
+		if ( $which !== 'top' || ! current_user_can( 'list_users' ) ) {
 			return;
 		}
 
@@ -86,9 +74,6 @@ class WNRCG_Admin_Users {
 		<?php
 	}
 
-	/**
-	 * Stream CSV when requested.
-	 */
 	public static function maybe_export_csv(): void {
 		if ( ! isset( $_GET['wnrcg_export_csv'] ) || $_GET['wnrcg_export_csv'] !== '1' ) {
 			return;
@@ -102,6 +87,12 @@ class WNRCG_Admin_Users {
 			wp_die( esc_html__( 'Security check failed.', 'wp-no-registration-content-gate' ), 403 );
 		}
 
+		$export_fields = WNRCG_Fields::export_columns();
+		$header        = array( 'ID', 'Role', 'Registered', 'Last Unlocked' );
+		foreach ( $export_fields as $field ) {
+			$header[] = (string) $field['label'];
+		}
+
 		$users = get_users( array( 'fields' => 'all' ) );
 
 		nocache_headers();
@@ -113,44 +104,25 @@ class WNRCG_Admin_Users {
 			exit;
 		}
 
-		fputcsv(
-			$out,
-			array(
-				'ID',
-				'Email',
-				'Name',
-				'Role',
-				'Job Title',
-				'Poem Usage',
-				'Comms Opt-In',
-				'Registered',
-				'Last Unlocked',
-			)
-		);
+		fputcsv( $out, $header );
 
 		foreach ( $users as $user ) {
 			if ( ! $user instanceof WP_User ) {
 				continue;
 			}
 
-			$roles = implode( ', ', $user->roles );
-			$comms = (string) get_user_meta( $user->ID, 'wnrcg_comms_opt_in', true );
-			$last  = (string) get_user_meta( $user->ID, 'wnrcg_last_unlocked_at', true );
-
-			fputcsv(
-				$out,
-				array(
-					(string) $user->ID,
-					$user->user_email,
-					$user->display_name,
-					$roles,
-					(string) get_user_meta( $user->ID, 'wnrcg_job_title', true ),
-					(string) get_user_meta( $user->ID, 'wnrcg_poem_usage', true ),
-					$comms === 'yes' ? 'Yes' : 'No',
-					$user->user_registered,
-					$last,
-				)
+			$row = array(
+				(string) $user->ID,
+				implode( ', ', $user->roles ),
+				$user->user_registered,
+				(string) get_user_meta( $user->ID, 'wnrcg_last_unlocked_at', true ),
 			);
+
+			foreach ( $export_fields as $field ) {
+				$row[] = WNRCG_Fields::value_for_user( $user->ID, $field );
+			}
+
+			fputcsv( $out, $row );
 		}
 
 		fclose( $out );
