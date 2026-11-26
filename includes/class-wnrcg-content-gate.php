@@ -30,12 +30,12 @@ class WNRCG_Content_Gate {
 	 *
 	 * @param int $post_id Post ID.
 	 */
-	public static function access_granted( int $post_id ): bool {
-		if ( is_user_logged_in() ) {
-			return true;
-		}
-
-		return WNRCG_Cookie::is_valid_for_request();
+	/**
+	 * @param int         $post_id Post ID.
+	 * @param string|null $scope   Optional block/shortcode scope (scoped mode).
+	 */
+	public static function access_granted( int $post_id, ?string $scope = null ): bool {
+		return WNRCG_Scopes::access_granted( $post_id, $scope );
 	}
 
 	/**
@@ -137,10 +137,21 @@ class WNRCG_Content_Gate {
 	 * @param int $post_id Post ID.
 	 */
 	public static function needs_gate_assets( int $post_id ): bool {
-		if ( self::access_granted( $post_id ) ) {
+		$has_sections = self::post_has_gated_sections( $post_id );
+		$protected    = WNRCG_Meta::is_protected( $post_id );
+
+		if ( ! $protected && ! $has_sections ) {
 			return false;
 		}
 
-		return WNRCG_Meta::is_protected( $post_id ) || self::post_has_gated_sections( $post_id );
+		if ( WNRCG_Scopes::is_site_mode() && self::access_granted( $post_id ) ) {
+			return false;
+		}
+
+		if ( $protected && ! self::access_granted( $post_id ) ) {
+			return true;
+		}
+
+		return $has_sections && ! is_user_logged_in();
 	}
 }

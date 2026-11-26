@@ -22,10 +22,15 @@ if ( $post_id < 1 ) {
 	return;
 }
 
-$access = WNRCG_Content_Gate::access_granted( $post_id );
+$scope = isset( $attributes['gateScope'] ) ? (string) $attributes['gateScope'] : '';
+if ( $scope === '' ) {
+	$scope = WNRCG_Scopes::default_scope();
+}
+$scope  = WNRCG_Scopes::sanitize_scope( $scope );
+$access = WNRCG_Content_Gate::access_granted( $post_id, $scope );
 
 // Entire-page restriction is handled by the_content / post-content filters.
-if ( WNRCG_Meta::is_protected( $post_id ) && ! $access ) {
+if ( WNRCG_Meta::is_protected( $post_id ) && ! WNRCG_Content_Gate::access_granted( $post_id ) ) {
 	return;
 }
 
@@ -40,7 +45,7 @@ $wrapper_attrs = get_block_wrapper_attributes(
 	)
 );
 
-$inner = $access ? $content : WNRCG_Form::render_for_context( $post_id, 'block' );
+$inner = $access ? $content : WNRCG_Form::render_for_context( $post_id, 'block', $scope );
 
 printf(
 	'<div %s>%s</div>',

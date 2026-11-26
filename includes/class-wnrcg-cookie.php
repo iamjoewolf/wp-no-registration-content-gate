@@ -17,6 +17,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WNRCG_Cookie {
 
 	/**
+	 * Whether cookie expiry was slid this request.
+	 *
+	 * @var bool
+	 */
+	private static $slide_done = false;
+
+	/**
 	 * Cookie name.
 	 */
 	public static function name(): string {
@@ -88,6 +95,14 @@ class WNRCG_Cookie {
 
 		if ( ! get_user_by( 'id', $user_id ) ) {
 			return 0;
+		}
+
+		if (
+			! self::$slide_done
+			&& (bool) WNRCG_Settings::get( 'cookie_slide_refresh', true )
+		) {
+			self::$slide_done = true;
+			self::set_for_user( $user_id );
 		}
 
 		return $user_id;

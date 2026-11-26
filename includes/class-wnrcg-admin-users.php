@@ -93,7 +93,17 @@ class WNRCG_Admin_Users {
 			$header[] = (string) $field['label'];
 		}
 
-		$users = get_users( array( 'fields' => 'all' ) );
+		$users = get_users(
+			array(
+				'fields'     => 'all',
+				'meta_query' => array(
+					array(
+						'key'     => 'wnrcg_unlocked_at',
+						'compare' => 'EXISTS',
+					),
+				),
+			)
+		);
 
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );

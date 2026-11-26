@@ -16,7 +16,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class WNRCG_Meta {
 
-	public const META_KEY = '_wnrcg_protected_page';
+	public const META_KEY        = '_wnrcg_protected_page';
+	public const SCOPE_META_KEY  = '_wnrcg_gate_scope';
 
 	/**
 	 * Post types that can be protected.
@@ -57,6 +58,22 @@ class WNRCG_Meta {
 					'default'           => '0',
 					'show_in_rest'      => true,
 					'sanitize_callback' => array( __CLASS__, 'sanitize_meta' ),
+					'auth_callback'     => static function (): bool {
+						return current_user_can( 'edit_posts' );
+					},
+				)
+			);
+			register_post_meta(
+				$post_type,
+				self::SCOPE_META_KEY,
+				array(
+					'type'              => 'string',
+					'single'            => true,
+					'default'           => '',
+					'show_in_rest'      => true,
+					'sanitize_callback' => static function ( $value ): string {
+						return WNRCG_Scopes::sanitize_scope( (string) $value );
+					},
 					'auth_callback'     => static function (): bool {
 						return current_user_can( 'edit_posts' );
 					},
@@ -107,6 +124,7 @@ class WNRCG_Meta {
 	public static function render_meta_box( WP_Post $post ): void {
 		wp_nonce_field( 'wnrcg_save_protected', 'wnrcg_protected_nonce' );
 		$checked = self::is_protected( (int) $post->ID );
+		$scope   = (string) get_post_meta( (int) $post->ID, self::SCOPE_META_KEY, true );
 		?>
 		<p>
 			<label>
@@ -117,6 +135,15 @@ class WNRCG_Meta {
 		<p class="description">
 			<?php esc_html_e( 'Same idea as Ultimate Member “restrict this page”. For only part of a page, leave this off and use the Gated content block or [wnrcg_gated] shortcode.', 'wp-no-registration-content-gate' ); ?>
 		</p>
+		<?php if ( ! WNRCG_Scopes::is_site_mode() ) : ?>
+			<p>
+				<label for="wnrcg_gate_scope"><?php esc_html_e( 'Gate scope', 'wp-no-registration-content-gate' ); ?></label><br />
+				<input type="text" class="widefat" name="wnrcg_gate_scope" id="wnrcg_gate_scope" value="<?php echo esc_attr( $scope ); ?>" placeholder="<?php echo esc_attr( WNRCG_Scopes::default_scope() ); ?>" />
+			</p>
+			<p class="description">
+				<?php esc_html_e( 'Visitors who unlocked this scope (same email = same user) can see this page. Use the same scope on related poem packs.', 'wp-no-registration-content-gate' ); ?>
+			</p>
+		<?php endif; ?>
 		<?php if ( current_user_can( 'manage_options' ) ) : ?>
 			<p>
 				<a href="<?php echo esc_url( admin_url( 'admin.php?page=wnrcg-protected' ) ); ?>">
@@ -152,5 +179,13 @@ class WNRCG_Meta {
 
 		$protected = isset( $_POST['wnrcg_protected_page'] ) ? '1' : '0';
 		update_post_meta( $post_id, self::META_KEY, $protected );
+
+		if ( ! WNRCG_Scopes::is_site_mode() && isset( $_POST['wnrcg_gate_scope'] ) ) {
+			update_post_meta(
+				$post_id,
+				self::SCOPE_META_KEY,
+				WNRCG_Scopes::sanitize_scope( sanitize_text_field( wp_unslash( (string) $_POST['wnrcg_gate_scope'] ) ) )
+			);
+		}
 	}
 }

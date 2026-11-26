@@ -26,7 +26,9 @@ class WNRCG_User_Service {
 	 * @return int|WP_Error
 	 */
 	public static function upsert_from_unlock( array $values ) {
-		$email = self::value_for_storage( $values, WNRCG_Fields::STORAGE_USER_EMAIL );
+		$email = self::normalize_email(
+			self::value_for_storage( $values, WNRCG_Fields::STORAGE_USER_EMAIL )
+		);
 		if ( $email === '' || ! is_email( $email ) ) {
 			return new WP_Error( 'wnrcg_invalid_email', __( 'A valid email address is required.', 'wp-no-registration-content-gate' ) );
 		}
@@ -170,6 +172,10 @@ class WNRCG_User_Service {
 	/**
 	 * @param string $email Email.
 	 */
+	private static function normalize_email( string $email ): string {
+		return strtolower( trim( $email ) );
+	}
+
 	private static function unique_username_from_email( string $email ): string {
 		$local = strstr( $email, '@', true );
 		if ( $local === false ) {

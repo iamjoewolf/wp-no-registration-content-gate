@@ -147,9 +147,11 @@ class WNRCG_Admin {
 			'wnrcg-block-editor',
 			'wnrcgEditor',
 			array(
-				'metaKey'    => WNRCG_Meta::META_KEY,
-				'postTypes'  => WNRCG_Meta::post_types(),
-				'settingsUrl' => admin_url( 'admin.php?page=wnrcg-settings' ),
+				'metaKey'      => WNRCG_Meta::META_KEY,
+				'scopeMetaKey' => WNRCG_Meta::SCOPE_META_KEY,
+				'unlockMode'   => WNRCG_Scopes::unlock_mode(),
+				'postTypes'    => WNRCG_Meta::post_types(),
+				'settingsUrl'  => admin_url( 'admin.php?page=wnrcg-settings' ),
 			)
 		);
 
@@ -282,6 +284,23 @@ class WNRCG_Admin {
 
 				<table class="form-table" role="presentation">
 					<tr>
+						<th scope="row"><label for="wnrcg_unlock_mode"><?php esc_html_e( 'Unlock mode', 'wp-no-registration-content-gate' ); ?></label></th>
+						<td>
+							<select name="<?php echo esc_attr( WNRCG_Settings::OPTION_KEY ); ?>[unlock_mode]" id="wnrcg_unlock_mode">
+								<option value="site" <?php selected( ( $options['unlock_mode'] ?? 'site' ), 'site' ); ?>><?php esc_html_e( 'Site-wide — one unlock opens all gated content (Poems for the Wall)', 'wp-no-registration-content-gate' ); ?></option>
+								<option value="scoped" <?php selected( ( $options['unlock_mode'] ?? 'site' ), 'scoped' ); ?>><?php esc_html_e( 'Scoped — unlock per gate group; same email reuses one user', 'wp-no-registration-content-gate' ); ?></option>
+							</select>
+							<p class="description"><?php esc_html_e( 'Scoped mode stores unlocked groups on the user record. The unlock cookie still identifies the visitor without a WordPress login.', 'wp-no-registration-content-gate' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="wnrcg_default_gate_scope"><?php esc_html_e( 'Default gate scope', 'wp-no-registration-content-gate' ); ?></label></th>
+						<td>
+							<input name="<?php echo esc_attr( WNRCG_Settings::OPTION_KEY ); ?>[default_gate_scope]" id="wnrcg_default_gate_scope" type="text" class="regular-text" value="<?php echo esc_attr( (string) ( $options['default_gate_scope'] ?? WNRCG_Scopes::SCOPE_ALL ) ); ?>" />
+							<p class="description"><?php esc_html_e( 'Slug used when a page or block has no scope (e.g. pack-a). Ignored in site-wide mode.', 'wp-no-registration-content-gate' ); ?></p>
+						</td>
+					</tr>
+					<tr>
 						<th scope="row"><label for="wnrcg_form_title"><?php esc_html_e( 'Form heading', 'wp-no-registration-content-gate' ); ?></label></th>
 						<td><input name="<?php echo esc_attr( WNRCG_Settings::OPTION_KEY ); ?>[form_title]" id="wnrcg_form_title" type="text" class="regular-text" value="<?php echo esc_attr( (string) $options['form_title'] ); ?>" /></td>
 					</tr>
@@ -306,11 +325,39 @@ class WNRCG_Admin {
 							<p class="description"><?php esc_html_e( 'If unchecked, the submitted name is stored in user meta only (recommended for historic accounts).', 'wp-no-registration-content-gate' ); ?></p>
 						</td>
 					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Cookie refresh', 'wp-no-registration-content-gate' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( WNRCG_Settings::OPTION_KEY ); ?>[cookie_slide_refresh]" value="1" <?php checked( ! empty( $options['cookie_slide_refresh'] ) ); ?> />
+								<?php esc_html_e( 'Extend unlock cookie lifetime on each visit while the cookie is still valid', 'wp-no-registration-content-gate' ); ?>
+							</label>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="wnrcg_privacy_policy_url"><?php esc_html_e( 'Privacy policy URL', 'wp-no-registration-content-gate' ); ?></label></th>
+						<td>
+							<input name="<?php echo esc_attr( WNRCG_Settings::OPTION_KEY ); ?>[privacy_policy_url]" id="wnrcg_privacy_policy_url" type="url" class="regular-text" value="<?php echo esc_attr( (string) ( $options['privacy_policy_url'] ?? '' ) ); ?>" placeholder="https://" />
+							<p class="description"><?php esc_html_e( 'Optional link shown below the unlock form.', 'wp-no-registration-content-gate' ); ?></p>
+						</td>
+					</tr>
 				</table>
 
 				<h2><?php esc_html_e( 'Caching', 'wp-no-registration-content-gate' ); ?></h2>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Discourage page cache', 'wp-no-registration-content-gate' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( WNRCG_Settings::OPTION_KEY ); ?>[prevent_cache]" value="1" <?php checked( ! isset( $options['prevent_cache'] ) || ! empty( $options['prevent_cache'] ) ); ?> />
+								<?php esc_html_e( 'Set DONOTCACHEPAGE on gated singular views (when the visitor may see the unlock form)', 'wp-no-registration-content-gate' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'Also exclude gated URLs in your CDN or cache plugin when possible. Override per site with the wnrcg_gate_should_prevent_cache filter.', 'wp-no-registration-content-gate' ); ?></p>
+						</td>
+					</tr>
+				</table>
 				<p class="description">
-					<?php esc_html_e( 'Protected pages must not serve the same cached HTML to locked and unlocked visitors. Exclude gated URLs in your CDN or cache plugin, or use visitor-specific caching.', 'wp-no-registration-content-gate' ); ?>
+					<?php esc_html_e( 'Protected pages must not serve the same cached HTML to locked and unlocked visitors.', 'wp-no-registration-content-gate' ); ?>
 				</p>
 
 				<p class="description">

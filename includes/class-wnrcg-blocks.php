@@ -68,11 +68,24 @@ class WNRCG_Blocks {
 			return '';
 		}
 
-		if ( WNRCG_Content_Gate::access_granted( $post_id ) ) {
+		$atts = shortcode_atts(
+			array(
+				'scope' => '',
+			),
+			is_array( $atts ) ? $atts : array(),
+			'wnrcg_gated'
+		);
+
+		$scope = (string) $atts['scope'];
+		if ( $scope === '' ) {
+			$scope = WNRCG_Scopes::default_scope();
+		}
+
+		if ( WNRCG_Content_Gate::access_granted( $post_id, $scope ) ) {
 			return do_shortcode( (string) $content );
 		}
 
-		return WNRCG_Form::render_for_context( $post_id, 'shortcode' );
+		return WNRCG_Form::render_for_context( $post_id, 'shortcode', $scope );
 	}
 
 	/**

@@ -2,7 +2,16 @@
 
 A lightweight WordPress plugin (for [Poems for the Wall](https://poemsforthewall.org)) that replaces login/registration gates with a frictionless entry form on protected pages.
 
-Visitors enter their name, job title, how they'll use the content, and email, plus an optional comms opt-in. The plugin creates or updates a standard WordPress user (no password or login needed), sets a signed persistent cookie so they aren't asked again, and reveals protected content immediately. Existing users are preserved and recognised.
+Visitors enter their name, job title, how they'll use the content, and email, plus an optional comms opt-in. The plugin creates or updates **one WordPress user per email** (no password or login needed), sets a signed persistent cookie, and reveals protected content. Existing users are preserved and recognised.
+
+### Unlock modes (Content Gate → Settings)
+
+| Mode | Use case |
+|------|----------|
+| **Site-wide** (default) | **Poems for the Wall:** one successful unlock opens every gated page. Same cookie everywhere. |
+| **Scoped** | **Generic sites:** content is grouped by **gate scope** (slug on each page/block). Unlock scope `pack-a` only opens content in that group. The same email unlocks additional scopes on the **same user record** — no duplicate accounts. |
+
+Scoped scopes are stored in user meta `wnrcg_unlocked_scopes`. Blocks support a **Gate scope** attribute; shortcode: `[wnrcg_gated scope="pack-a"]…[/wnrcg_gated]`.
 
 ## Install
 
@@ -32,15 +41,16 @@ Visitors enter their name, job title, how they'll use the content, and email, pl
 3. **Return visit:** Clear cookies or use a private window vs normal window to confirm bypass behaviour.
 4. **Logged-in WP user:** Any logged-in user bypasses the gate on protected pages.
 5. **Historic user:** Submit with an email that already exists in `wp_users` — login and password unchanged; Administrator/Editor roles are not downgraded.
-6. **CSV export:** Users → **Export CSV (gate fields)** (requires `list_users`).
+6. **CSV export:** Users → **Export CSV (gate fields)** — only users with unlock data (requires `list_users`).
+7. **Validation errors:** Submit with a required field empty — error list and repopulated values should both appear.
 
 ## Caching
 
-Full-page caches must not serve one HTML body to both locked and unlocked visitors. Options:
+Full-page caches must not serve one HTML body to both locked and unlocked visitors. By default the plugin sets **`DONOTCACHEPAGE`** on gated singular views when the visitor may see the unlock form (**Content Gate → Settings → Discourage page cache**). You can still:
 
 - Exclude protected URLs in your CDN/page cache, or
 - Use cache plugins that vary on cookie (rare), or
-- Set `define( 'DONOTCACHEPAGE', true );` via the `wnrcg_gate_should_prevent_cache` filter if you add site-specific logic.
+- Override with the `wnrcg_gate_should_prevent_cache` filter (third argument: post ID).
 
 Block themes: gated `core/post-content` is replaced via the `render_block` filter as well as `the_content`.
 
@@ -48,7 +58,10 @@ Block themes: gated `core/post-content` is replaced via the `render_block` filte
 
 - `wnrcg_protected_post_types` — post types that can be protected (default: `page`, `post`).
 - `wnrcg_update_display_name` — set true to overwrite `display_name` on unlock for existing users (default: false; name stored in `wnrcg_last_submitted_name`).
-- `wnrcg_unlocked` — action after successful unlock: `($user_id, $post_id)`.
+- `wnrcg_gate_should_prevent_cache` — whether to define `DONOTCACHEPAGE` on gated singular views (default from settings).
+- `wnrcg_rate_limit_max_attempts` — unlock attempts per IP per window (default: 10).
+- `wnrcg_rate_limit_window` — rate limit window in seconds (default: 900).
+- `wnrcg_unlocked` — action after successful unlock: `($user_id, $post_id, $scope)`.
 
 ## Form fields (admin)
 
@@ -72,6 +85,15 @@ Built-in locked fields: **name**, **email**, **comms_opt_in**. Add custom questi
 | `wnrcg_last_unlocked_at` | Most recent unlock |
 | `wnrcg_last_submitted_name` | Name when display name not overwritten |
 | `wnrcg_*` | Custom field answers (per field ID) |
+
+## Tests
+
+With [PHPUnit](https://phpunit.de/) installed:
+
+```bash
+cd wp-no-registration-content-gate
+phpunit -c phpunit.xml.dist
+```
 
 ## Licence
 

@@ -6,6 +6,7 @@
 	var registerPlugin = wp.plugins.registerPlugin;
 	var PluginDocumentSettingPanel = wp.editPost.PluginDocumentSettingPanel;
 	var ToggleControl = wp.components.ToggleControl;
+	var TextControl = wp.components.TextControl;
 	var ExternalLink = wp.components.ExternalLink;
 	var useSelect = wp.data.useSelect;
 	var useDispatch = wp.data.useDispatch;
@@ -27,6 +28,7 @@
 
 		var editPost = useDispatch( 'core/editor' ).editPost;
 		var isProtected = meta[ config.metaKey ] === '1';
+		var scopedMode = config.unlockMode === 'scoped';
 
 		return createElement(
 			PluginDocumentSettingPanel,
@@ -48,6 +50,21 @@
 					editPost( { meta: patch } );
 				},
 			} ),
+			scopedMode
+				? createElement( TextControl, {
+						label: __( 'Gate scope', 'wp-no-registration-content-gate' ),
+						help: __(
+							'Same scope on related pages shares one unlock. One email always maps to one WordPress user.',
+							'wp-no-registration-content-gate'
+						),
+						value: meta[ config.scopeMetaKey ] || '',
+						onChange: function ( value ) {
+							var patch = {};
+							patch[ config.scopeMetaKey ] = value;
+							editPost( { meta: patch } );
+						},
+				  } )
+				: null,
 			config.settingsUrl
 				? createElement(
 						'p',
